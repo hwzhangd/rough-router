@@ -82,7 +82,7 @@ export default class Router {
       }
 
       if (ctx.router.matches) {
-        co(callback.bind(ctx, next))()
+        co(callback.bind(ctx, next))
         break
       }
     }
