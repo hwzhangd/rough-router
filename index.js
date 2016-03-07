@@ -1,24 +1,30 @@
+import co from 'co'
+
 export default class Router {
   constructor() {
-    this.controller = []
+    this.controllers = []
   }
 
   on(route, callback) {
     if (Array.isArray(route)) {
       route.forEach( (route) => {
-        this.controller.push({ route, callback })
+        this.controllers.push({ route, callback })
       })
     } else {
-      this.controller.push({ route, callback })
+      this.controllers.push({ route, callback })
     }
   }
 
   start(ctx, next) {
-    ctx.router = this
-    this.exec(ctx, next)
-    window.addEventListener('hashchange', () => {
-      this.exec(ctx, next)
-    })
+    var router = this
+    return function* (next) {
+      var ctx = this
+      this.router = router
+      router.exec(ctx, next)
+      window.addEventListener('hashchange', () => {
+        router.exec(ctx, next)
+      })
+    }
   }
 
   exec(ctx, next) {
@@ -26,43 +32,59 @@ export default class Router {
     let index = hash.indexOf('?')
 
     if (index !== -1) {
-      hash = hash.slice(1, index)
+      hash = hash.slice(2, index)
     } else {
-      hash = hash.slice(1)
+      hash = hash.slice(2)
+    }
+
+    if (hash[hash.length - 1] == '/') {
+      hash.slice(0, -1)
     }
 
     if (hash === '') {
       location.hash = '#/'
     }
 
-    this.controller.some(({route, callback}) => {
+    ctx.router.matches = null
+    for (let i = 0, len = this.controllers.length; i < len; i++) {
+      let {route, callback} = this.controllers[i]
+      let matches = []
+
       if (route instanceof RegExp) {
-        let matches = hash.match(route)
+        matches = hash.match(route)
         if (matches) {
-          ctx.router.match = match
-          callback(ctx, next);
-          return true
+          ctx.router.matches = matches
         }
       }
 
       if (typeof route === 'string') {
-        let matches = route.match(/^(\/.*?\/):(.+)$/)
-        if (matches) {
-          let match = hash.replace(matches[1], '')
-          if (match !== hash  && match.indexOf('/') === -1) {
-            ctx.router.match = [match]
-            callback(ctx, next)
+        let routeFragments = route.slice(1).split('/')
+        let hashFragments = hash.split('/')
+
+        if (routeFragments.length != hashFragments.length) continue
+
+        let matched = routeFragments.every((routeFragment, j) => {
+          let hashFragment = hashFragments[j]
+
+          if (hashFragment == routeFragment) return true
+
+          if (/^:(.+)$/.test(routeFragment)) {
+            matches.push(hashFragment)
             return true
           }
-        }
 
-        if (route === hash) {
-          callback.call(ctx, next)
-          return true
+          return false
+        })
+
+        if (matched) {
+          ctx.router.matches = matches
         }
       }
 
-      return false
-    })
+      if (ctx.router.matches) {
+        co(callback.bind(ctx, next))()
+        break
+      }
+    }
   }
 }

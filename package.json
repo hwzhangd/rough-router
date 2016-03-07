@@ -15,5 +15,8 @@
     "url": "https://github.com/eggggger/rough-router/issues"
   },
   "homepage": "https://github.com/eggggger/rough-router#readme",
-  "description": ""
+  "description": "",
+  "dependencies": {
+    "co": "^4.6.0"
+  }
 }
