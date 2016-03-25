@@ -32,9 +32,9 @@ export default class Router {
     let index = hash.indexOf('?')
 
     if (index !== -1) {
-      hash = hash.slice(2, index)
+      hash = hash.slice(1, index)
     } else {
-      hash = hash.slice(2)
+      hash = hash.slice(1)
     }
 
     if (hash[hash.length - 1] == '/') {
@@ -58,7 +58,7 @@ export default class Router {
       }
 
       if (typeof route === 'string') {
-        let routeFragments = route.slice(1).split('/')
+        let routeFragments = route.split('/')
         let hashFragments = hash.split('/')
 
         if (routeFragments.length != hashFragments.length) continue
