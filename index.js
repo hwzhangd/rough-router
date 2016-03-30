@@ -30,6 +30,7 @@ export default class Router {
   exec(ctx, next) {
     let hash = location.hash
     let index = hash.indexOf('?')
+    let routes = []
 
     if (index !== -1) {
       hash = hash.slice(1, index)
@@ -48,12 +49,13 @@ export default class Router {
     ctx.router.matches = null
     for (let i = 0, len = this.controllers.length; i < len; i++) {
       let {route, callback} = this.controllers[i]
+      let isMatched = false
       let matches = []
 
       if (route instanceof RegExp) {
         matches = hash.match(route)
         if (matches) {
-          ctx.router.matches = matches
+          isMatched = true
         }
       }
 
@@ -63,7 +65,7 @@ export default class Router {
 
         if (routeFragments.length != hashFragments.length) continue
 
-        let matched = routeFragments.every((routeFragment, j) => {
+        let isMatched = routeFragments.every((routeFragment, j) => {
           let hashFragment = hashFragments[j]
 
           if (hashFragment == routeFragment) return true
@@ -75,16 +77,19 @@ export default class Router {
 
           return false
         })
-
-        if (matched) {
-          ctx.router.matches = matches
-        }
       }
 
-      if (ctx.router.matches) {
-        co(callback.bind(ctx, next))
-        break
+      if (isMatched) {
+        ctx.router.matches = matches
+        routes.push(callback)
       }
     }
+
+    let fn = co.wrap(function*(){
+      for(var i = 0,len = routes.length; i < len; i++){
+        yield routes[i];
+      }
+    })
+    fn.call(ctx)
   }
 }
